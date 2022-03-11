@@ -32,6 +32,7 @@ GROUP BY namefirst, namelast
  HAVING sum(salary) IS NOT NULL
 ORDER BY total_salary DESC
 A: David Price $81,851,296*/
+
 /*4. Using the fielding table, group players into three groups based on their position: label players with position OF as "Outfield", those with position "SS", "1B", "2B", and "3B" as "Infield", and those with position "P" or "C" as "Battery". Determine the number of putouts made by each of these three groups in 2016.
 SELECT
 sum(f.po),
@@ -45,7 +46,7 @@ END AS position
 from fielding as f
 WHERE f.yearid=2016
 GROUP BY position
-A: 41424 Battery, 58934 Infield, 29560 Outfield*/
+A: 41,424 Battery, 58,934 Infield, 29,560 Outfield*/
 /*5. Find the average number of strikeouts per game by decade since 1920. Round the numbers you report to 2 decimal places. Do the same for home runs per game. Do you see any trends?
 Select sum(HR) AS HOMERUNS,
 sum(G)/2 as GAMES,
@@ -95,26 +96,30 @@ A: Christopher Scott 91%*/
 /*7. a.From 1970 – 2016, what is the largest number of wins for a team that did not win the world series? b.What is the smallest number of wins for a team that did win the world series? Doing this will probably result in an unusually small number of wins for a world series champion – determine why this is the case. Then redo your query, excluding the problem year. How often from 1970 – 2016 was it the case that a team with the most wins also won the world series? What percentage of the time?*/
 
 /*a.
-Select teamid, sum(w) AS high_wins
+Select teamid, yearid, max(w) AS high_wins
 from teams
-where teamid IN
-(select teamid
-from teams
-where WSwin='N' AND yearid between 1970 AND 2016)
-group by teamid
+where WSwin='N' AND yearid between 1970 AND 2016
+group by teamid, yearid
 order by high_wins desc
-A: NYA (across all years) OR SEA 116 (largest in a year)*/
+A: SEA 116 (largest in a year)
  
-/*b.
-Select teamid, min(w) AS low_wins
+b.
+Select yearid, teamid, min(w) AS low_wins
 from teams
-where teamid IN
-(select teamid
-from teams
-where WSwin='Y' AND yearid between 1970 AND 2016)
-group by teamid
+where  
+WSwin='Y' AND yearid between '1970' AND '2016'
+group by teamid, yearid
 order by low_wins
-A: ANA 664 wins (across all years) OR PHI 17 wins (smallest in a year)*/
+A: LAN 1981 63 wins 1981 (smallest in a year). Player strike with fewer games.
+
+c. Select yearid, teamid, min(w) AS low_wins
+from teams
+where  
+WSwin='Y' AND yearid between '1970' AND '2016' 
+AND yearid <>'1981'
+group by teamid, yearid
+order by low_wins
+a. SLN in 2006 w/ 83 wins */
 
 /*Select teamid, yearid, sum(w) AS wins
 from teams
@@ -153,17 +158,54 @@ A: TBA STP01 15878, OAK OAK01 18784, CLE CLE08 19650, MIA MIA02 21405, CHA CHI12
 
 --9. Which managers have won the TSN Manager of the Year award in both the National League (NL) and the American League (AL)? Give their full name and the teams that they were managing when they won the award.
 
-Select playerid, yearid 
-where playerid IN
-(Select playerid, lgid, yearid
-from awardsmanagers
+
+/*Select namefirst,namelast, m.teamid,results.yearid,results.lgid, results.playerid from people AS p
+JOIN
+(Select playerid, yearid,lgid,awardid from awardsmanagers where playerid in
+	(Select playerid
+from awardsmanagers as a
 where playerid IN
 (select playerid where awardid LIKE 'TSN%' AND lgid IN ('AL'))
-group by playerid, lgid, yearid) AND playerid IN
-(Select playerid, lgid, yearid
+INTERSECT
+Select playerid
 from awardsmanagers
 where playerid IN
-(select playerid where awardid LIKE 'TSN%' AND lgid IN ('NL'))
-group by playerid, lgid, yearid)
+(select playerid where awardid LIKE 'TSN%' AND lgid IN ('NL')))
+AND awardid LIKE 'TSN%') AS results
+ON p.playerid=results.playerid
+JOIN managers as m
+ON results.playerid=m.playerid AND results.yearid=m.yearid
+order by results.playerid
 
-10. Find all players who hit their career highest number of home runs in 2016. Consider only players who have played in the league for at least 10 years, and who hit at least one home run in 2016. Report the players' first and last names and the number of home runs they hit in 2016.
+Davey Johnson 1997 BAL and 2012 WAS, Jim Leyland 1988 PIT, 1990 PIT , 1992 PIT, 2006 DET*/
+
+
+--10. Find all players who hit their career highest number of home runs in 2016. Consider only players who have played in the league for at least 10 years, and who hit at least one home run in 2016. Report the players' first and last names and the number of home runs they hit in 2016.
+
+
+WITH CTE2 AS 
+(WITH CTE1 AS 
+(select playerid,
+yearid,
+count(yearid) OVER(partition by playerid) AS years_played, 
+sum(hr) AS year_hr,
+max(max(hr)) OVER(partition by playerid) AS max_hr
+FROM
+batting as b
+group by playerid, yearid)
+Select playerid, yearid, year_hr,max_hr
+from CTE1
+where years_played>=10)
+select playerid, year_hr 
+from CTE2
+where year_hr=max_hr
+AND yearid=2016 AND year_hr>=1
+
+
+
+
+
+
+
+
+
